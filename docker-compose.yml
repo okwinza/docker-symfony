@@ -1,0 +1,109 @@
+version: '3.7'
+services:
+    db:
+        image: mysql
+        build: ./mysql
+        restart: on-failure
+        command: ["--default-authentication-plugin=mysql_native_password"]
+        ports:
+            - "${DB_PORT}:3306"
+        volumes:
+          - db:/var/lib/mysql
+        environment:
+            TZ: ${TIMEZONE}
+            MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+            MYSQL_USER: ${DB_USER}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+        tty: true
+
+    app:
+        image: app
+        build: ./php-fpm
+        restart: on-failure
+        ports:
+            - "${APP_PHPFPM_PORT}:9000"
+        volumes:
+            - ${APP_PROJECT_ROOT}:/var/www/app:cached
+            - ${LOGS_ROOT}/app/symfony:/var/www/app/var/log:cached
+            - ${LOGS_ROOT}/app/php:/var/log/php:cached
+        environment:
+            TZ: ${TIMEZONE}
+            REDIS_HOST: redis
+            REDIS_PORT: ${REDIS_PORT}
+            RABBITMQ_HOST: rabbitmq
+            RABBITMQ_PORT: ${RABBITMQ_PORT}
+            RABBITMQ_USER: ${RABBITMQ_USER}
+            RABBITMQ_PASS: ${RABBITMQ_PASSWORD}
+            DB_HOST: db
+            DB_PORT: ${DB_PORT}
+            DB_USER: ${DB_USER}
+            DB_PASSWORD: ${DB_PASSWORD}
+        links:
+            - db
+            - redis
+            - rabbitmq
+        tty: true
+
+    nginx:
+        image: nginx
+        build: ./nginx
+        restart: on-failure
+        ports:
+            - "${NGINX_PORT}:80"
+        links:
+            - app
+        volumes:
+            - ${LOGS_ROOT}/nginx:/var/log/nginx:cached
+            - ${APP_PROJECT_ROOT}:/var/www/app:cached
+        environment:
+            TZ: ${TIMEZONE}
+            APP_PHPFPM_PORT: ${APP_PHPFPM_PORT}
+            APP_NGINX_SERVER_NAME: ${APP_NGINX_SERVER_NAME}
+        tty: true
+
+    elk:
+        image: willdurand/elk
+        restart: on-failure
+        ports:
+            - "${ELK_PORT}:80"
+        volumes:
+            - ./elk/logstash:/etc/logstash:cached
+            - ${LOGS_ROOT}/app:/var/www/app/var/log:cached
+            - ${LOGS_ROOT}/nginx:/var/log/nginx:cached
+        environment:
+            TZ: ${TIMEZONE}
+        tty: true
+
+    redis:
+        image: redis
+        build: ./redis
+        restart: on-failure
+        ports:
+            - "${REDIS_PORT}:6379"
+        volumes:
+          - redis-data:/data
+        environment:
+            TZ: ${TIMEZONE}
+        tty: true
+
+    rabbitmq:
+        image: rabbitmq
+        build: ./rabbitmq
+        restart: on-failure
+        ports:
+            - "${RABBITMQ_PORT}:5672"
+            - "${RABBITMQ_MANAGEMENT_PORT}:15672"
+        volumes:
+            - "./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins"
+        environment:
+            TZ: ${TIMEZONE}
+            RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE}
+            RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+            RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+            RABBITMQ_DEFAULT_VHOST: /
+        tty: true
+
+volumes:
+  db:
+  redis-data:
+
