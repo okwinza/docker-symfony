@@ -5,10 +5,10 @@ PHP_SERVICE := docker-compose exec webapp sh -c
 export COMPOSE_PROJECT_NAME := symfony
 
 # Create configuration files needed by the environment
-SETUP_ENV := $(shell (test -f $(SELF_DIR).env || cp $(SELF_DIR).env.dist $(SELF_DIR).env))
+SETUP_ENV := $(shell (test -f $(SELF_DIR)/.env || cp $(SELF_DIR)/.env.dist $(SELF_DIR)/.env))
 
 # Extract environment variables needed by the environment
-export DB_DIR := $(shell grep DB_DIR $(SELF_DIR).env | awk -F '=' '{print $$NF}')
+export DB_DIR := $(shell grep DB_DIR $(SELF_DIR)/.env | awk -F '=' '{print $$NF}')
 
 
 ##
